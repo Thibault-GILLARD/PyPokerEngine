@@ -4,7 +4,6 @@ from pypokerengine.utils.game_state_utils import restore_game_state
 from pokereval.card import Card
 from pokereval.hand_evaluator import HandEvaluator
 
-from colorama import init, Fore, Back, Style
 
 def pypokerengine_card_to_pokereval_card(card_str):
     """
