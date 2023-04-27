@@ -49,6 +49,8 @@ class HandEvaluator:
 
   @classmethod
   def eval_hand(self, hole, community):
+    #print("Debug hole_card:", hole)
+    #print("Debug community_card:", community)
     ranks = sorted([card.rank for card in hole])
     hole_flg = ranks[1] << 4 | ranks[0]
     hand_flg = self.__calc_hand_info_flg(hole, community) << 8
