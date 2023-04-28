@@ -45,7 +45,13 @@ class BasePokerPlayer(object):
   def respond_to_ask(self, message):
     """Called from Dealer when ask message received from RoundManager"""
     valid_actions, hole_card, round_state = self.__parse_ask_message(message)
-    return self.declare_action(valid_actions, hole_card, round_state)
+    #debug
+    #return self.declare_action(valid_actions, hole_card, round_state)
+    ''''''
+    seats = round_state["seats"]  # Retrieve the seats information from round_state
+    # Pass the seats information to the declare_action method
+    return self.declare_action(valid_actions, hole_card, round_state, seats)
+    ''''''
 
   def receive_notification(self, message):
     """Called from Dealer when notification received from RoundManager"""
