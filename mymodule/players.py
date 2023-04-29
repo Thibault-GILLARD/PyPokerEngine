@@ -43,7 +43,9 @@ class HonestPlayer(BasePokerPlayer):
         return action['action'], action['amount']
 
     def receive_game_start_message(self, game_info):
-        self.nb_player = game_info['player_num']
+        seats = game_info['seats']
+        # Initialize the player_actions dictionary with the UUIDs of the players in the game
+        self.player_actions = {player['uuid']: {'folds': 0, 'calls': 0, 'raises': 0, 'last_action': None} for player in seats}
 
     def receive_round_start_message(self, round_count, hole_card, seats):
         pass
@@ -219,10 +221,17 @@ class KerasPlayer(BasePokerPlayer):
         
         # Example: encode the stack size of each opponent as a percentage of the total chips in the game
         total_chips = sum([seat["stack"] for seat in seats])
+        action_mapping = {'fold': 0, 'call': 1, 'raise': 2, None: -1}
+
         for seat in seats:
             if seat["uuid"] != self.uuid:  # Only consider opponents
                 stack_size_percentage = seat["stack"] / total_chips
                 opponents_behavior.append(stack_size_percentage)
+                
+                # Get the last action of this opponent
+                last_action = self.player_actions[seat["uuid"]].get("last_action", None)
+                opponents_behavior.append(action_mapping[last_action])
+
         
         return opponents_behavior
     
@@ -441,12 +450,13 @@ class KerasPlayer(BasePokerPlayer):
     
     def update_player_actions(self, action_histories):
 
-        for street_actions in action_histories.values():
+         for street_actions in action_histories.values():
             for action in street_actions:
                 player_uuid = action['uuid']
                 action_type = action['action']
-                if action_type in ['fold', 'call', 'raise']: # it was if action_type in ['FOLD', 'CALL', 'RAISE']:
+                if action_type in ['fold', 'call', 'raise']:
                     self.player_actions[player_uuid][action_type.lower()] += 1
+                    self.player_actions[player_uuid]["last_action"] = action_type.lower()
 
     def receive_game_update_message(self, new_action, round_state):
         action_histories = round_state['action_histories']
