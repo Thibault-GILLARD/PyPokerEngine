@@ -42,10 +42,10 @@ def create_poker_model(input_dim):
     return final_model
 
 # Create the model
-input_dim = 22  # Number of input features (use the total number of features you have in your dataset)
+input_dim = 24  # Number of input features (use the total number of features you have in your dataset)
 model = create_poker_model(input_dim)
 model.summary()
-model.save('poker_model.h5')
+model.save('poker_model_input24.h5')
 print("Model created and saved successfully!")
 
 

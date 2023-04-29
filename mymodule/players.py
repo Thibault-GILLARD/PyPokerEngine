@@ -6,6 +6,9 @@ from pokereval.card import Card
 from pokereval.hand_evaluator import HandEvaluator
 import random 
 
+from tensorflow.keras.utils import to_categorical
+
+
 def pypokerengine_card_to_pokereval_card(card_str):
         """
         Convert a card string from PyPokerEngine to a Card object from pokereval.card.
@@ -182,7 +185,7 @@ from pypokerengine.players import BasePokerPlayer
 class KerasPlayer(BasePokerPlayer):
     def __init__(self):
         super().__init__()
-        self.model = keras.models.load_model('poker_model.h5')
+        self.model = keras.models.load_model('poker_model_input24.h5')
         self.training_data = []
         self.player_actions = {}  # Initialize an empty dictionary here
         self.hole_card = None
@@ -395,13 +398,19 @@ class KerasPlayer(BasePokerPlayer):
 
     def collect_training_data(self, hole_card, round_state, reward):
         # Collect training data during a game
-        #community_cards = [pypokerengine_card_to_pokereval_card(card_str) for card_str in round_state["community_card"]]
-        #hole_cards = [pypokerengine_card_to_pokereval_card(card_str) for card_str in hole_card]
         community_cards = [card_str for card_str in round_state["community_card"]]
         seats = round_state['seats']  # Add this line to get seats information from round_state
         hole_cards = [card_str for card_str in hole_card]
         model_input = self.convert_cards_to_input(hole_cards, community_cards, round_state, seats)  # Add seats here
-        self.training_data.append((model_input, reward))
+
+        # Get the action label and raise amount
+        ACTION_MAPPING = {'fold': 0, 'call': 1, 'raise': 2}
+        action_label = ACTION_MAPPING[self.action_taken]
+        raise_amount = self.amount_taken
+
+
+        # Store the features and the action label + raise amount
+        self.training_data.append((model_input, (action_label, raise_amount, reward)))
 
     def update_model(self, batch_size):
         # Update the model using the collected training data
@@ -409,8 +418,18 @@ class KerasPlayer(BasePokerPlayer):
         if len(self.training_data) > batch_size:
             batch = random.sample(self.training_data, batch_size)
             X_train, y_train = zip(*batch)
-            self.model.fit(np.array(X_train), np.array(y_train), epochs=1, verbose=0) 
 
+            y_train_action, y_train_amount, y_train_reward = zip(*y_train)
+            y_train_action = np.array(y_train_action)
+            y_train_amount = np.array(y_train_amount)
+
+            # Convert action labels to one-hot encoding
+            y_train_action_one_hot = to_categorical(y_train_action, num_classes=3)
+
+            self.model.fit(np.array(X_train), {'action_output': y_train_action_one_hot, 'amount_output': y_train_amount},
+                        epochs=1, verbose=0)
+            
+            print ('------------------- The model is updated -------------------')
     # Implement the required methods for BasePokerPlayer
     def declare_action(self, valid_actions, hole_card, round_state, seats):
         
@@ -432,7 +451,11 @@ class KerasPlayer(BasePokerPlayer):
         community_cards = [pypokerengine_card_to_pokereval_card(card_str) for card_str in round_state["community_card"]]
         #model_input = self.convert_cards_to_input(hole_card, community_cards, round_state, seats)
 
-        return action['action'], amount
+        chosen_action = action['action']
+        chosen_amount = amount
+        self.action_taken = chosen_action
+        self.amount_taken = chosen_amount 
+        return chosen_action, chosen_amount
 
     def receive_game_start_message(self, game_info):
         seats = game_info['seats']
